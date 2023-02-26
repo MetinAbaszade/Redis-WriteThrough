@@ -12,7 +12,7 @@ namespace Reddis_Task.Services.Concrete
         private readonly HttpClient _httpClient;
         private readonly IRedisService _redisService;
         private readonly ApplicationContext _context;
-         
+
 
         public WeatherService(IRedisService redisService, ApplicationContext context)
         {
@@ -21,27 +21,66 @@ namespace Reddis_Task.Services.Concrete
             _context = context;
         }
 
+        // Lazy Loading
         public async Task<WeatherData> GetWeatherData(string city)
         {
+            var redisdata = await _redisService.GetDataAsync(city);
+            WeatherData weatherData;
 
-            string apiKey = "f8c667e0bd93b1e29e75c3e7520410d0";
-            string apiUrl = $"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={apiKey}";
-            HttpResponseMessage response = await _httpClient.GetAsync(apiUrl);
-            response.EnsureSuccessStatusCode();
-            string responseString = await response.Content.ReadAsStringAsync();
-            WeatherData weatherData = JsonConvert.DeserializeObject<WeatherData>(responseString);
+            if (string.IsNullOrEmpty(redisdata))
+            {
+                weatherData = WeatherData.GenerateRandomData(city);
 
-            // Store the data in cache for 1 hour
+                // Store the data in cache for 1 hour
+                try
+                {
+                    // TTL
+                    TimeSpan oneHour = TimeSpan.FromHours(1);
+                    _redisService.AddDataAsync(city, JsonConvert.SerializeObject(weatherData), oneHour);
+                }
+                catch (Exception ex)
+                {
+                    throw ex;
+                }
+
+                weatherData.UpdateSource("API");
+                return weatherData;
+            }
+
+            weatherData = JsonConvert.DeserializeObject<WeatherData>(redisdata);
+            weatherData.UpdateSource("Redis");
+            return weatherData;
+        }
+
+        // Write Through
+        public async Task<WeatherData> UpdateWeatherData(WeatherData weatherData)
+        {
             try
             {
-               await _context.WeatherDatas.AddAsync(weatherData);
-               await _context.SaveChangesAsync();
-               return _context.WeatherDatas.FirstOrDefault();
+                weatherData.UpdateSource("API");
+
+                var weatherdatainDB = _context.WeatherDatas.FindAsync(weatherData.Id);
+
+                if (weatherdatainDB.Result == null)
+                {
+                    throw new Exception("Data not found");
+                } 
+
+                // Write to DB
+                _context.WeatherDatas.Update(weatherData);
+                await _context.SaveChangesAsync();
+
+                // Update Redis
+                TimeSpan oneHour = TimeSpan.FromHours(1);
+                _redisService.EditDataAsync(weatherData.City, JsonConvert.SerializeObject(weatherData), oneHour);
+
+                return _context.WeatherDatas.FirstOrDefault();
             }
             catch (Exception ex)
             {
                 throw ex;
-            }  
+            }
+
         }
     }
 }

@@ -1,70 +1,51 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace Reddis_Task.Entities
 {
 
-    [Keyless]
-    public class Clouds
-    {
-        public int all { get; set; }
-    }
-
-    public class Coord
-    {
-        public double lon { get; set; }
-        public double lat { get; set; }
-    }
-
-    public class Main
-    {
-        public double temp { get; set; }
-        public double feels_like { get; set; }
-        public double temp_min { get; set; }
-        public double temp_max { get; set; }
-        public int pressure { get; set; }
-        public int humidity { get; set; }
-    }
-
     public class WeatherData
     {
+        public Guid Id { get; set; } = Guid.NewGuid();
+        public string City { get; set; }
+        public DateTime Date { get; set; }
+        public double Temperature { get; set; }
+        public double Humidity { get; set; }
+        public double WindSpeed { get; set; }
+        public double Pressure { get; set; }
+
         public string Source { get; set; }
-        public Coord coord { get; set; }
-        public List<Weather> weather { get; set; }
-        public string @base { get; set; }
-        public Main main { get; set; }
-        public int visibility { get; set; }
-        public Wind wind { get; set; }
-        public Clouds clouds { get; set; }
-        public int dt { get; set; }
-        public Sys sys { get; set; }
-        public int timezone { get; set; }
-        public int id { get; set; }
-        public string name { get; set; }
-        public int cod { get; set; }
-    }
 
-    public class Sys
-    {
-        public int id { get; set; }
-        public int type { get; set; }
-        public string country { get; set; }
-        public int sunrise { get; set; }
-        public int sunset { get; set; }
-    }
+        public WeatherData UpdateSource(string source)
+        {
+            Source = source;
+            return this;
+        }
 
-    public class Weather
-    {
-        public int id { get; set; }
-        public string main { get; set; }
-        public string description { get; set; }
-        public string icon { get; set; }
-    }
+        public static WeatherData GenerateRandomData(string city)
+        {
+            Random random = new Random();
+            List<WeatherData> data = new List<WeatherData>();
 
-    [Keyless]
-    public class Wind
-    {
-        public double speed { get; set; }
-        public int deg { get; set; }
+
+            DateTime date = DateTime.Now.AddDays(random.Next(1, 5));
+            double temperature = random.Next(-20, 50) + random.NextDouble();
+            double humidity = random.NextDouble() * 100;
+            double windSpeed = random.NextDouble() * 30;
+            double pressure = random.NextDouble() * 1000 + 900;
+
+            var NewWeatherdata = new WeatherData()
+            {
+                City = city,
+                Date = date,
+                Temperature = temperature,
+                Humidity = humidity,
+                WindSpeed = windSpeed,
+                Pressure = pressure
+            };
+
+            return NewWeatherdata;
+        }
     }
 }

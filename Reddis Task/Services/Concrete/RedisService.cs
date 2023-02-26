@@ -49,11 +49,11 @@ namespace Reddis_Task.Services.Concrete
             }
         }
 
-        public async void EditDataAsync(string key, string value)
+        public async void EditDataAsync(string key, string value, TimeSpan ttl)
         {
             if (key != null)
             {
-                await Database.StringSetAsync(key, value);
+                await Database.StringSetAsync(key, value, ttl);
             }
             else
             {
